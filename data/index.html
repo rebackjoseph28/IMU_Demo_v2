@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CSU CSpace Demo</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/png" href="favicon.png">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <div class="topnav">
+            <h1>IMU Websocket Demo</h1>
+        </div>
+        <div class="content">
+            <div class="card-grid">
+                <div class="card">
+                    <p class="card-title"><i class="fas fa-thermometer-threequarters" style="color:#059e8a;"></i> X Acceleration</p>
+                    <p class="reading"><span id="accelx"></span> m/s&sup2;</p>
+                    <p class="card-title"> Y Acceleration</p>
+                    <p class="reading"><span id="accely"></span> m/s&sup2;</p>
+                    <p class="card-title"> Z Acceleration</p>
+                    <p class="reading"><span id="accelz"></span> m/s&sup2;</p>
+                </div>
+                <div class="card">
+                    <p class="card-title"><i class="fas fa-thermometer-threequarters" style="color:#059e8a;"></i> Pitch</p>
+                    <p class="reading"><span id="gyrox"></span> &deg;/s</p>
+                    <p class="card-title"> Roll</p>
+                    <p class="reading"><span id="gyroy"></span> &deg;/s</p>
+                    <p class="card-title"> Yaw</p>
+                    <p class="reading"><span id="gyroz"></span> &deg;/s</p>
+                </div>
+                <div class="card">
+                    <p class="card-title"><i class="fas fa-thermometer-threequarters" style="color:#059e8a;"></i> X Magnet</p>
+                    <p class="reading"><span id="magx"></span> gauss</p>
+                    <p class="card-title"> Y Magnet</p>
+                    <p class="reading"><span id="magy"></span> gauss</p>
+                    <p class="card-title"> Z Magnet</p>
+                    <p class="reading"><span id="magz"></span> gauss</p>
+                </div>
+                <script type="text/javascript" src="three.js"></script>
+		        <!--<script src="/socket.io/socket.io.js"></script>-->
+		        <script src="renderCube.js"></script>
+            </div>
+        </div>
+        <script src="script.js"></script>
+    </body>
+</html>
