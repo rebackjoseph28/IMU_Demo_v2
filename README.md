@@ -11,7 +11,7 @@ LSM9DS1        | https://www.adafruit.com/product/3387
 LiPo Battery   | https://www.adafruit.com/product/1578
 Battery Charger| https://www.adafruit.com/product/4410
 
-Another thing you might want to consider purchasing is a cheap wifi router, which will be elaborated on further later.
+Another thing you might want to consider purchasing is a cheap Wi-Fi router, which will be elaborated on further later.
 
 ## Setup ##
 The main requirement to get the code working is setting up PlatformIO for VSCode. Ardunio's IDE stopped support for writing multiple files to an ESP32, so this is how we get around that.
@@ -29,7 +29,7 @@ Replace with network info on line 38:
 const char* ssid     = "ssid";
 const char* password = "password";
 ```
-Network security is of utmost importance, so I would strongly reccommend using your own router and entering in that information instead of a public network.
+Network security is always important, so I would strongly recommend using your own router and entering that information instead of a public network. Additionally, public networks have regulations on who can and cannot locally host.
 
 ## Running the code ##
 To build and upload the code you'll have to go into the platformIO sidebar, and click on:
