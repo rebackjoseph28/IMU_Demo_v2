@@ -34,7 +34,7 @@
 #define LSM9DS1_XGCS 6
 #define LSM9DS1_MCS 5
 
-// Replace with your network credentials
+//Network Credentials
 const char* ssid     = "TP-Link_AF39";
 const char* password = "65105474";
 
@@ -50,6 +50,11 @@ JSONVar readings;
 // Timer variables
 unsigned long lastTime = 0;  
 unsigned long timerDelay = 50;
+
+double rotationXabs = 0;
+double rotationYabs = 0;
+double rotationZabs = 0;
+double heading;
 
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
@@ -87,10 +92,22 @@ String getSensorReadings(){
   readings["magx"] = String(m.magnetic.x);
   readings["magy"] =  String(m.magnetic.y);
   readings["magz"] = String(m.magnetic.z);
+  heading = atan2(m.magnetic.y, m.magnetic.x) * RAD_TO_DEG;
+  
+  readings["magd"] = String(heading);
 
   readings["gyrox"] = String(g.gyro.x);
   readings["gyroy"] =  String(g.gyro.y);
-  readings["gyroz"] = String(g.gyro.z);
+  readings["gyroz"] = String(g.gyro.z); 
+
+  if (g.gyro.x > 0.5 || g.gyro.x < -0.5) rotationXabs += g.gyro.x; 
+  if (g.gyro.y > 0.5 || g.gyro.y < -0.5) rotationYabs += g.gyro.y; 
+  if (g.gyro.z > 0.5 || g.gyro.z < -0.5) rotationZabs += g.gyro.z;
+
+  readings["absX"] = String(rotationXabs);
+  readings["absY"] = String(rotationYabs);
+  readings["absZ"] = String(rotationZabs);
+  
 
   String jsonString = JSON.stringify(readings);
   return jsonString;
@@ -163,7 +180,7 @@ void initIMU(){
   Serial.println("BEGIN IMU SETUP");
   if (!lsm.begin())
   { //haha infinite loop if wired incorrectly
-    Serial.println("Unable to initialize the LSM9DS1. Check your wiring!");
+    Serial.println("Unable to initialize the LSM9DS1. Check wiring!");
     while (1);
   }
   Serial.println("Found LSM9DS1 9DOF");
@@ -172,7 +189,7 @@ void initIMU(){
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("LSMDS1 Demo");
+  Serial.println("IMU Demo V2");
   initWiFi();
   Serial.println("PASSED WIFI TEST");
   initFS();
