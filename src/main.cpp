@@ -1,11 +1,3 @@
-/*********
-  Rui Santos
-  Complete instructions at https://RandomNerdTutorials.com/esp8266-nodemcu-websocket-server-sensor/
-  
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*********/
-
 /* Adapted to use a different IMU by Joey Reback at Colorado State University
  * Using code from randomNerdTutorials and Adafruit's LSM9DS1 Tutorial
  * 
@@ -14,7 +6,6 @@
  * IDE used:   VSCode with PlatformIO plugin
  * TODO:       Threejs integration.
 */
-
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -33,6 +24,9 @@
 #define LSM9DS1_MOSI A4
 #define LSM9DS1_XGCS 6
 #define LSM9DS1_MCS 5
+
+// Declination in Boulder, CO.
+#define DECLINATION -8.58 
 
 //Network Credentials
 const char* ssid     = "TP-Link_AF39";
@@ -54,60 +48,80 @@ unsigned long timerDelay = 50;
 double rotationXabs = 0;
 double rotationYabs = 0;
 double rotationZabs = 0;
-double heading;
+double heading = 0;
+String direction;
 
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
+sensors_event_t a, m, g, temp;
 
 // Init IMU
 void setupSensor(){
-  // 1.) Set the accelerometer range
-  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_8G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
+  //Set the accelerometer range
+  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G); //2G:16G
   
-  // 2.) Set the magnetometer sensitivity
-  lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_8GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_12GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_16GAUSS);
+  //Set the magnetometer sensitivity
+  lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS); //4:16 Gauss
 
-  // 3.) Setup the gyroscope
-  lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS);
-  //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_500DPS);
-  //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
+  //Setup the gyroscope
+  lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS); //245:2000DPS
+}
+
+String headingHandler(double xGauss, double yGauss){
+  if ((xGauss < 0 && yGauss < 0) || (xGauss < 0 && yGauss > 0)) heading = atan2(yGauss, xGauss) - PI;
+  else heading = atan2(yGauss, xGauss);
+
+  if (heading > 2*PI) heading -= (2 * PI);
+  if (heading < 0) heading += (2 * PI);
+
+  // Convert everything from radians to degrees:
+  heading *= 180.0 / PI;
+  heading += DECLINATION;
+
+  //if (heading > 360) heading -= 360;
+  //else if (heading < 0) heading += 360;
+
+  String output;
+  if (heading > 337.25 || heading < 22.5) output = "North, ";
+  else if (heading > 292.5 && heading <= 337.25) output = "North West, ";
+  else if (heading > 247.5 && heading <= 292.5) output = "West, ";
+  else if (heading > 202.5 && heading <= 247.5) output = "South West, ";
+  else if (heading > 157.5 && heading <= 202.5) output = "South, ";
+  else if (heading > 112.5 && heading <= 157.5) output = "South East, ";
+  else if (heading > 67.5 && heading <= 112.5) output = "East, ";
+  else if (heading > 0 && heading <= 67.5) output = "North East, ";
+  
+  else output = "what?";
+  return output + String(heading);
 }
 
 // Get Sensor Readings and return JSON object
 String getSensorReadings(){
   lsm.read();  /* ask it to read in the data */ 
-  /* Get a new sensor event */ 
-  sensors_event_t a, m, g, temp;
+  /* Get a new sensor event */
+  lsm.getEvent(&a, &m, &g, &temp);
 
-  lsm.getEvent(&a, &m, &g, &temp); 
   readings["accelx"] = String(a.acceleration.x);
   readings["accely"] =  String(a.acceleration.y);
   readings["accelz"] = String(a.acceleration.z);
 
-  readings["magx"] = String(m.magnetic.x);
-  readings["magy"] =  String(m.magnetic.y);
-  readings["magz"] = String(m.magnetic.z);
-  heading = atan2(m.magnetic.y, m.magnetic.x) * RAD_TO_DEG;
-  
-  readings["magd"] = String(heading);
+  readings["magx"] = String(m.magnetic.x + 36.92);
+  readings["magy"] =  String(m.magnetic.y - 3.07);
+  readings["magz"] = String(m.magnetic.z - 13.94);
 
   readings["gyrox"] = String(g.gyro.x);
   readings["gyroy"] =  String(g.gyro.y);
   readings["gyroz"] = String(g.gyro.z); 
 
-  if (g.gyro.x > 0.5 || g.gyro.x < -0.5) rotationXabs += g.gyro.x; 
-  if (g.gyro.y > 0.5 || g.gyro.y < -0.5) rotationYabs += g.gyro.y; 
-  if (g.gyro.z > 0.5 || g.gyro.z < -0.5) rotationZabs += g.gyro.z;
+  if (g.gyro.x > 0.06 || g.gyro.x < -0.06) rotationXabs += g.gyro.x; 
+  if (g.gyro.y > 0.06 || g.gyro.y < -0.06) rotationYabs += g.gyro.y;
+  if (g.gyro.z > 0.06 || g.gyro.z < -0.06) rotationZabs += g.gyro.z;
 
   readings["absX"] = String(rotationXabs);
   readings["absY"] = String(rotationYabs);
   readings["absZ"] = String(rotationZabs);
   
+  direction = headingHandler(m.magnetic.x + 36.92, m.magnetic.y - 3.07);
+  readings["magd"] = String(direction);
 
   String jsonString = JSON.stringify(readings);
   return jsonString;
@@ -204,6 +218,7 @@ void setup() {
 
   // Start server
   server.begin();
+
   initIMU();
 }
 
