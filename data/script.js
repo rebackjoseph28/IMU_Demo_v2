@@ -10,7 +10,8 @@ let gyrox = 0, gyroy = 0, gyroz = 0;
 //let rotation = new THREE.Quaternion();
 let magx = 0, magy = 0, magz = 0;
 let accx = 0, accy = 0, accz = 0;
-const degToRad = (2 * Math.PI / 360);
+const degToRad = (2 * Math.PI / (360));
+const radoffset = 1/2;
 const reset = new THREE.Euler();
 
 // FOR THE MAGNETIC VECTOR
@@ -85,15 +86,15 @@ function onMessage(event) {
         if (key.localeCompare("absZ") === 0) rotz = parseFloat(myObj[key]) * degToRad;
 
         if (key.localeCompare("gyrox") === 0){
-            gyrox = parseFloat(myObj[key]) * degToRad;
+            gyrox = parseFloat(myObj[key]) * degToRad * radoffset;
             if (gyrox < 0.005 && gyrox > -0.005) gyrox = 0;
         } 
         if (key.localeCompare("gyroy") === 0){
-            gyroy = -parseFloat(myObj[key]) * degToRad;
+            gyroy = -parseFloat(myObj[key]) * degToRad * radoffset;
             if (gyroy < 0.005 && gyroy > -0.005) gyroy = 0;
         }
         if (key.localeCompare("gyroz") === 0) {
-            gyroz = parseFloat(myObj[key]) * degToRad;
+            gyroz = parseFloat(myObj[key]) * degToRad * radoffset;
             if (gyroz < 0.005 && gyroz > -0.005) gyroz = 0;
         }
         if (key.localeCompare("magx") === 0) magx = parseFloat(myObj[key]);

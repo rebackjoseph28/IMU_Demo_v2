@@ -1,12 +1,3 @@
-/* Adapted to use a different IMU by Joey Reback at Colorado State University
- * Using code from randomNerdTutorials and Adafruit's LSM9DS1 Tutorial
- * 
- * Purpose:    Demonstrate the functionality of the Adafruit LSM9DS1 IMU
- * Parts used: Adafruit Huzzah ESP8266, LSM9DS1, Adafruit LiPo Battery and LiPo Charger
- * IDE used:   VSCode with PlatformIO plugin
- * TODO:       Threejs integration.
-*/
-
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -18,7 +9,7 @@
 #include <Adafruit_Sensor.h>
 #include <Arduino_JSON.h>
 
-//pin definitions
+// Pin definitions
 #define LSM9DS1_SCK A5
 #define LSM9DS1_MISO 12
 #define LSM9DS1_MOSI A4
@@ -28,9 +19,9 @@
 // Declination in Boulder, CO.
 #define DECLINATION -8.58 
 
-//Network Credentials
-const char* ssid     = "TP-Link_AF39";
-const char* password = "65105474";
+// Access Point Credentials
+const char* ssid = "ESP8266_AP";
+const char* password = "12345678";
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -54,31 +45,22 @@ String direction;
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 sensors_event_t a, m, g, temp;
 
-// Init IMU
-void setupSensor(){
-  //Set the accelerometer range
-  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G); //2G:16G
-  
-  //Set the magnetometer sensitivity
-  lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS); //4:16 Gauss
-
-  //Setup the gyroscope
-  lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS); //245:2000DPS
+// Initialize IMU
+void setupSensor() {
+  lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
+  lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
+  lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS);
 }
 
-String headingHandler(double xGauss, double yGauss){
+String headingHandler(double xGauss, double yGauss) {
   if ((xGauss < 0 && yGauss < 0) || (xGauss < 0 && yGauss > 0)) heading = atan2(yGauss, xGauss) - PI;
   else heading = atan2(yGauss, xGauss);
 
-  if (heading > 2*PI) heading -= (2 * PI);
+  if (heading > 2 * PI) heading -= (2 * PI);
   if (heading < 0) heading += (2 * PI);
 
-  // Convert everything from radians to degrees:
   heading *= 180.0 / PI;
   heading += DECLINATION;
-
-  //if (heading > 360) heading -= 360;
-  //else if (heading < 0) heading += 360;
 
   String output;
   if (heading > 337.25 || heading < 22.5) output = "North, ";
@@ -95,21 +77,20 @@ String headingHandler(double xGauss, double yGauss){
 }
 
 // Get Sensor Readings and return JSON object
-String getSensorReadings(){
-  lsm.read();  /* ask it to read in the data */ 
-  /* Get a new sensor event */
+String getSensorReadings() {
+  lsm.read();  
   lsm.getEvent(&a, &m, &g, &temp);
 
   readings["accelx"] = String(a.acceleration.x);
-  readings["accely"] =  String(a.acceleration.y);
+  readings["accely"] = String(a.acceleration.y);
   readings["accelz"] = String(a.acceleration.z);
 
   readings["magx"] = String(m.magnetic.x + 36.92);
-  readings["magy"] =  String(m.magnetic.y - 3.07);
+  readings["magy"] = String(m.magnetic.y - 3.07);
   readings["magz"] = String(m.magnetic.z - 13.94);
 
   readings["gyrox"] = String(g.gyro.x);
-  readings["gyroy"] =  String(g.gyro.y);
+  readings["gyroy"] = String(g.gyro.y);
   readings["gyroz"] = String(g.gyro.z); 
 
   if (g.gyro.x > 0.06 || g.gyro.x < -0.06) rotationXabs += g.gyro.x; 
@@ -123,30 +104,25 @@ String getSensorReadings(){
   direction = headingHandler(m.magnetic.x + 36.92, m.magnetic.y - 3.07);
   readings["magd"] = String(direction);
 
-  String jsonString = JSON.stringify(readings);
-  return jsonString;
+  return JSON.stringify(readings);
 }
 
 // Initialize LittleFS
 void initFS() {
   if (!LittleFS.begin()) {
     Serial.println("An error has occurred while mounting LittleFS");
-  }
-  else{
-   Serial.println("LittleFS mounted successfully");
+  } else {
+    Serial.println("LittleFS mounted successfully");
   }
 }
 
-// Initialize WiFi
+// Initialize Access Point
 void initWiFi() {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print('.');
-    delay(1000);
-  }
-  Serial.println(WiFi.localIP());
+  WiFi.mode(WIFI_AP);  // Set the ESP8266 to AP mode
+  WiFi.softAP(ssid, password);  // Start the AP with credentials
+  Serial.println("Access Point Started");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP());
 }
 
 void notifyClients(String sensorReadings) {
@@ -156,15 +132,8 @@ void notifyClients(String sensorReadings) {
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    //data[len] = 0;
-    //String message = (char*)data;
-    // Check if the message is "getReadings"
-    //if (strcmp((char*)data, "getReadings") == 0) {
-      //if it is, send current sensor readings
       String sensorReadings = getSensorReadings();
-      Serial.print(sensorReadings);
       notifyClients(sensorReadings);
-    //}
   }
 }
 
@@ -190,10 +159,9 @@ void initWebSocket() {
   server.addHandler(&ws);
 }
 
-void initIMU(){
+void initIMU() {
   Serial.println("BEGIN IMU SETUP");
-  if (!lsm.begin())
-  { //haha infinite loop if wired incorrectly
+  if (!lsm.begin()) {
     Serial.println("Unable to initialize the LSM9DS1. Check wiring!");
     while (1);
   }
@@ -205,7 +173,6 @@ void setup() {
   Serial.begin(9600);
   Serial.println("IMU Demo V2");
   initWiFi();
-  Serial.println("PASSED WIFI TEST");
   initFS();
   initWebSocket();
 
@@ -225,11 +192,9 @@ void setup() {
 void loop() {
   if ((millis() - lastTime) > timerDelay) {
     String sensorReadings = getSensorReadings();
-    //Serial.print(sensorReadings);
     notifyClients(sensorReadings);
 
-  lastTime = millis();
-
+    lastTime = millis();
   }
 
   ws.cleanupClients();
